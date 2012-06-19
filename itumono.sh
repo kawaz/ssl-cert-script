@@ -52,6 +52,7 @@ if [ ! -f server.passphrase ]; then
       break
     fi
   done
+  echo_debug "make server.passphrase"
   echo "$PASSPHRASE" > server.passphrase
 fi
 PASSPHRASE="`cat server.passphrase`"
@@ -82,8 +83,9 @@ if [ server.key -nt server.crt ]; then
   echo_debug "make server.crt"
   ##自署証明書の場合は以下のコマンドでcrtを作成してしまえばよい
   autopass openssl req -sha1 -new -x509 -days $((10*365)) -config config -key server.key -out server.crt -set_serial `date +%s`
-  echo_info "CAから証明書を取得したらserver.crtを差し替えて下さい。"
-  echo_info "更にその時 $0 を再度実行すれば。cacertも更新します。"
+  echo_info "自動生成されたserver.crtはオレオレ証明書なので、server.csrをCAへ送って正規の証明書を取得して下さい。"
+  echo_info "証明書が取得できたらserver.crtを差し替えて使います。"
+  echo_info "更にその時 $0 を再度実行すればserver.cacert.crtも更新します。"
   ##
   #cat <<EOF > server.crt
   #(正式に貰った証明書)
@@ -123,7 +125,7 @@ fi
 
 ##アプリケーションによってはDER形式の証明書を要求するものもあるのでそれも作っておく
 if [ server.crt -nt server.crt.der ]; then
-  echo_debug "make server.der"
+  echo_debug "make server.crt.der"
   openssl x509 -inform PEM -outform DER -in server.crt -out server.crt.der
 fi
 
