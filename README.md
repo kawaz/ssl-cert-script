@@ -16,10 +16,13 @@ CAによって差があるが数分から数日のうちにcrtが送られてく
 サーバアプリにはキー、SSL証明書、中間CA証明書として、`server.key.plain`と`server.crt`と`server.cacert.crt`を指定して使う。
 
     // node.js の例
-    var https = require('https');
-    var server = https.createServer(
-      { key: fs.readFileSync('server.key.plain', 'utf8'),
-        cert: fs.readFileSync('server.crt', 'utf8'),
-        ca: [fs.readFileSync('server.cacert.crt', 'utf8')]
-      });
-
+    var fs = require('fs')
+      , https = require('https')
+      , opts =
+        { key: fs.readFileSync('server.key.plain', 'utf8')
+        , cert: fs.readFileSync('server.crt', 'utf8')
+        , ca: [fs.readFileSync('server.cacert.crt', 'utf8')]
+        }
+      , server = https.createServer(opts, function(req, res){
+          res.end("Hello SSL");
+        }).listen(33333);
