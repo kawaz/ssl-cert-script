@@ -4,6 +4,8 @@ ssl-cert-script
 SSL証明書の作成用のスクリプト
 
 
+#サーバーキーの取得手順
+
 まず`server.csr`を作る。
 
     sh itumono.sh
@@ -15,7 +17,10 @@ CAによって差があるが数分から数日のうちにcrtが送られてく
 必要があれば取得した証明書に対応した中間CAの証明書を`server.cacert.crt`に保存しておく。
 サーバアプリにはキー、SSL証明書、中間CA証明書として、`server.key.plain`と`server.crt`と`server.cacert.crt`を指定して使う。
 
-    // node.js の例
+#サーバーキーの利用例 
+
+##node.js の例
+
     var fs = require('fs')
       , https = require('https')
       , opts =
