@@ -42,8 +42,16 @@ function autopass() {
   fi
 }
 
+function getCaCert() {
+  curl -s "$1" |
+  perl -pe's/[\r\n]+/\t/g' |
+  perl -pe's/(-----BEGIN CERTIFICATE-----\t.*?\t-----END CERTIFICATE-----)/\n$1\n/g' |
+  grep '^-----BEGIN CERTIFICATE-----' |
+  perl -pe's/\t/\n/g'
+}
+
 ##パスフレーズを保存
-if [ ! -f server.passphrase ]; then
+if [ ! -f server.key.passphrase ]; then
   while :; do
     read -sp "Enter pass phrase for server.key: " PASSPHRASE; echo
     if [ "${#PASSPHRASE}" -lt 8 ]; then
@@ -52,10 +60,10 @@ if [ ! -f server.passphrase ]; then
       break
     fi
   done
-  echo_debug "make server.passphrase"
-  echo "$PASSPHRASE" > server.passphrase
+  echo_debug "make server.key.passphrase"
+  echo "$PASSPHRASE" > server.key.passphrase
 fi
-PASSPHRASE="`cat server.passphrase`"
+PASSPHRASE="`cat server.key.passphrase`"
 
 ##秘密鍵を作成
 if [ ! -s server.key ]; then
@@ -100,22 +108,37 @@ if [ server.crt -nt server.cacert.crt ]; then
   IssuerCN="`openssl x509 -in server.crt -text | egrep '^ +Issuer:.* CN=[^,]+' | perl -pe's/.* CN=//;s/,.*//'`"
   case "$IssuerCN" in
     "StartCom Class 1 "*)
-      CaCertURL_DER="http://www.startssl.com/certs/sub.class1.server.ca.crt"
+      CaCertURL_PEM="http://www.startssl.com/certs/sub.class1.server.ca.pem"
       ;;
     "StartCom Class 2 "*)
-      CaCertURL_DER="http://www.startssl.com/certs/sub.class2.server.ca.crt"
+      CaCertURL_PEM="http://www.startssl.com/certs/sub.class2.server.ca.pem"
       ;;
     "StartCom Class 3 "*)
-      CaCertURL_DER="http://www.startssl.com/certs/sub.class3.server.ca.crt"
+      CaCertURL_PEM="http://www.startssl.com/certs/sub.class3.server.ca.pem"
+      ;;
+    "StartCom Extended Validation Server CA")
+      CaCertURL_PEM="https://www.startssl.com/certs/sub.class4.server.ca.pem"
+      ;;
+    "VeriSign Class 3 Extended Validation SSL CA")
+      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/server/ev_bundled.html"
+      ;;
+    "VeriSign Class 3 Extended Validation SSL SGC CA")
+      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/server/ev_pro_bundled.html"
+      ;;
+    "VeriSign Class 3 Secure Server CA - G3")
+      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/secureserverCAg3_bundled.html"
+      ;;
+    "VeriSign Class 3 International Server CA - G3")
+      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/internationalserverCAg3_bundled.html"
       ;;
   esac
   if [ "x$CaCertURL_PEM" != "x" ]; then
-    echo_debug "make server.cacert.crt"
-    curl "$CaCertURL_PEM" -o server.cacert.crt
+    echo_debug "make server.cacert.crt < $CaCertURL_PEM"
+    getCaCert "$CaCertURL_PEM" > server.cacert.crt
     echo_debug "make server.cacert.crt.der"
     openssl x509 -in server.cacert.crt -outform der -out server.cacert.crt.der
   elif [ "x$CaCertURL_DER" != "x" ]; then
-    echo_debug "make server.cacert.crt.der"
+    echo_debug "make server.cacert.crt.der < $CaCertURL_DER"
     curl "$CaCertURL_DER" -o server.cacert.crt.der
     echo_debug "make server.cacert.crt"
     openssl x509 -inform der -in server.cacert.crt.der -out server.cacert.crt
