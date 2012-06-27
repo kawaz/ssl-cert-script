@@ -42,6 +42,7 @@ function autopass() {
   fi
 }
 
+##証明書をいい感じに取得する関数
 function getCaCert() {
   curl -s "$1" |
   perl -pe's/[\r\n]+/\t/g' |
