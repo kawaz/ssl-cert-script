@@ -22,7 +22,7 @@ if (diff -bB config config.sample >/dev/null 2>&1); then
   exit 1
 fi
 
-##パスフレーズ自動化陽関数定義
+##パスフレーズ自動化用関数
 function autopass() {
   if [ -x "`which expect 2>/dev/null`" ]; then
     # expectが使えるならパスフレーズを自動入力する
