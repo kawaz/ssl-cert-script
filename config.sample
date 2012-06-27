@@ -17,6 +17,6 @@ localityName_value = Kashiwa
 0.organizationName_value = ZunSystem Inc.
 1.organizationName_value = # omit
 organizationalUnitName_value = # omit
-commonName_value = *.example.jp
+commonName_value = www.example.jp
 emailAddress_value = # omit
 
