@@ -132,6 +132,9 @@ if [ server.crt -nt server.cacert.crt ]; then
     "VeriSign Class 3 International Server CA - G3")
       CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/internationalserverCAg3_bundled.html"
       ;;
+    "RapidSSL CA")
+      CaCertURL_PEM="https://knowledge.rapidssl.com/library/VERISIGN/ALL_OTHER/RapidSSL%20Intermediate/RapidSSL_CA_bundle.pem"
+      ;;
   esac
   if [ "x$CaCertURL_PEM" != "x" ]; then
     echo_debug "make server.cacert.crt < $CaCertURL_PEM"
@@ -143,6 +146,8 @@ if [ server.crt -nt server.cacert.crt ]; then
     curl "$CaCertURL_DER" -o server.cacert.crt.der
     echo_debug "make server.cacert.crt"
     openssl x509 -inform der -in server.cacert.crt.der -out server.cacert.crt
+  else
+    echo "Unknown IssuerCN: $IssuerCN"
   fi
 fi
 
