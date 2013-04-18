@@ -180,3 +180,7 @@ fi
 
 ##パーミッション設定
 chmod 600 server.*
+
+##証明書情報の表示
+echo_info "server.crt info is ..."
+openssl x509 -in server.crt -issuer -subject -dates -noout | perl -pe's/\s*\/.*(CN=.*)/$1/'
