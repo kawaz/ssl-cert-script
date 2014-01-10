@@ -147,6 +147,10 @@ if [[ server.crt -nt server.cacert.crt ]]; then
     "RapidSSL CA")
       CaCertURL_PEM="https://knowledge.rapidssl.com/library/VERISIGN/ALL_OTHER/RapidSSL%20Intermediate/RapidSSL_CA_bundle.pem"
       ;;
+    "PositiveSSL CA 2")
+      # http://bit.ly/ComodoIntermediate
+      CaCertURL_PEM="https://support.comodo.com/index.php?_m=downloads&_a=downloadfile&downloaditemid=119"
+      ;;
   esac
   if [[ "x$CaCertURL_PEM" != "x" ]]; then
     echo_debug "make server.cacert.crt < $CaCertURL_PEM"
