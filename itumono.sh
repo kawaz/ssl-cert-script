@@ -151,6 +151,10 @@ if [[ server.crt -nt server.cacert.crt ]]; then
       # http://bit.ly/ComodoIntermediate
       CaCertURL_PEM="https://support.comodo.com/index.php?_m=downloads&_a=downloadfile&downloaditemid=119"
       ;;
+    "GlobalSign Domain Validation CA - SHA256 - G2")
+      #クイック認証SSL用中間CA証明書(SHA256) https://jp.globalsign.com/repository/index.html
+      CaCertURL_PEM="https://jp.globalsign.com/repository/common/cer/gsdomainvalsha2g2.cer"
+      ;;
   esac
   if [[ "x$CaCertURL_PEM" != "x" ]]; then
     echo_debug "make server.cacert.crt < $CaCertURL_PEM"
