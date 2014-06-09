@@ -7,7 +7,7 @@ function echo_yellow()  { echo -e "\033[0;33m$@\033[0m"; }
 function echo_blue()    { echo -e "\033[0;34m$@\033[0m"; }
 function echo_magenta() { echo -e "\033[0;35m$@\033[0m"; }
 function echo_cyan()    { echo -e "\033[0;36m$@\033[0m"; }
-function echo_debug()   { echo_cyan "$@"; }
+function echo_debug()   { echo "$@"; }
 function echo_info()    { echo_green "$@"; }
 function echo_warn()    { echo_magenta "$@"; }
 function echo_error()   { echo_red "$@"; }
@@ -203,4 +203,14 @@ chmod 600 server.*
 
 ##証明書情報の表示
 echo_info "server.crt info is ..."
-openssl x509 -in server.crt -issuer -subject -dates -noout | perl -pe's/\s*\/.*(CN=.*)/$1/'
+x509_startdate=$(date -d "$(openssl x509 -in server.crt -noout -startdate | perl -pe's/.*=//')" +'%Y-%m-%dT%H:%M:%S%z')
+x509_enddate=$(date -d "$(openssl x509 -in server.crt -noout -enddate | perl -pe's/.*=//')" +'%Y-%m-%dT%H:%M:%S%z')
+x509_CN=$(openssl x509 -in server.crt -noout -subject | perl -pe's/.*CN=([a-z0-9\*\.\-]+).*/$1/')
+x509_SANs=($(openssl x509 -in server.crt -noout -text | grep -A1 "X509v3 Subject Alternative Name" | egrep -o 'DNS:[^,]+' | perl -pe's/.*://' | rev | sort | rev | uniq))
+x509_Subjects=($(echo $x509_CN "${x509_SANs[@]}" | perl -pe's/\s/\n/g' | rev | sort | rev | uniq))
+x509_issuer=$(openssl x509 -in server.crt -noout -issuer)
+echo "   Issuer: $x509_issuer"
+echo "StartDate: $x509_startdate"
+echo "  EndDate: $x509_enddate"
+echo "SubjectCN: $x509_CN "
+echo "     SANs: ${x509_SANs[@]}"
