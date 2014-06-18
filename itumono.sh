@@ -45,14 +45,31 @@ function autopass() {
   fi
 }
 
-##証明書をいい感じに取得する関数
-function getCaCert() {
-  curl -s "$1" |
-  perl -pe's/[\r\n]+/\t/g' |
-  perl -pe's/(-----BEGIN CERTIFICATE-----\t.*?\t-----END CERTIFICATE-----)/\n$1\n/g' |
-  grep '^-----BEGIN CERTIFICATE-----' |
-  perl -pe's/\t/\n/g'
+##URLかファイルか気にせずにcatする
+function cat2() {
+  if [[ $1 =~ ^https?:// ]]; then
+    curl -sL "$1"
+  elif [[ -f $1 ]]; then
+    cat "$1"
+  fi
 }
+
+##証明書のフォーマットを判定する
+function detectX509Format() {
+  (cat2 "$1" | openssl x509 -inform pem -noout 2>/dev/null && echo pem) ||
+  (cat2 "$1" | openssl x509 -inform der -noout 2>/dev/null && echo der) || return 1
+}
+
+##中間CA証明書を取得する
+function getInCACert() {
+  local inform=$(detectX509Format "$1")
+  [[ -z $inform ]] && return 1
+  local inca_uri=$(cat2 "$1" | openssl x509 -inform "$inform" -noout -text | egrep -A2 "^ +Authority Information Access:" | egrep '^ +CA Issuers - URI:' | perl -pe's/.*?URI://')
+  [[ -z $inca_uri ]] && return 0
+  cat2 "$1" | openssl x509 -inform "$inform"
+  getInCACert "$inca_uri"
+}
+
 
 ##パスフレーズを保存
 if [[ ! -f server.key.passphrase ]]; then
@@ -106,69 +123,22 @@ if [[ server.key -nt server.crt ]]; then
   autopass openssl req -sha1 -new -x509 -days $((10*365)) -config config -key server.key -out server.crt -set_serial `date +%s`
   echo_info "自動生成されたserver.crtはオレオレ証明書なので、server.csrをCAへ送って正規の証明書を取得して下さい。"
   echo_info "証明書が取得できたらserver.crtを差し替えて使います。"
-  echo_info "更にその時 $0 を再度実行すればserver.cacert.crtも更新します。"
+  echo_info "更にその時 $0 を再度実行すればserver.inca.crtも更新します。"
   ##
   #cat <<EOF > server.crt
   #(正式に貰った証明書)
   #EOF
 
   ##中間証明書があればCAから取得して保存しておく
-  touch server.cacert.crt
+  touch server.inca.crt
 fi
 
 ##証明書に対応した中間CA証明書を取得する
-if [[ server.crt -nt server.cacert.crt ]]; then
-  IssuerCN="`openssl x509 -in server.crt -text | egrep '^ +Issuer:.* CN=[^,]+' | perl -pe's/.* CN=//;s/,.*//'`"
-  case "$IssuerCN" in
-    "StartCom Class 1 "*)
-      CaCertURL_PEM="http://www.startssl.com/certs/sub.class1.server.ca.pem"
-      ;;
-    "StartCom Class 2 "*)
-      CaCertURL_PEM="http://www.startssl.com/certs/sub.class2.server.ca.pem"
-      ;;
-    "StartCom Class 3 "*)
-      CaCertURL_PEM="http://www.startssl.com/certs/sub.class3.server.ca.pem"
-      ;;
-    "StartCom Extended Validation Server CA")
-      CaCertURL_PEM="https://www.startssl.com/certs/sub.class4.server.ca.pem"
-      ;;
-    "VeriSign Class 3 Extended Validation SSL CA")
-      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/server/ev_bundled.html"
-      ;;
-    "VeriSign Class 3 Extended Validation SSL SGC CA")
-      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/server/ev_pro_bundled.html"
-      ;;
-    "VeriSign Class 3 Secure Server CA - G3")
-      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/secureserverCAg3_bundled.html"
-      ;;
-    "VeriSign Class 3 International Server CA - G3")
-      CaCertURL_PEM="https://www.verisign.co.jp/repository/intermediate/internationalserverCAg3_bundled.html"
-      ;;
-    "RapidSSL CA")
-      CaCertURL_PEM="https://knowledge.rapidssl.com/library/VERISIGN/ALL_OTHER/RapidSSL%20Intermediate/RapidSSL_CA_bundle.pem"
-      ;;
-    "PositiveSSL CA 2")
-      # http://bit.ly/ComodoIntermediate
-      CaCertURL_PEM="https://support.comodo.com/index.php?_m=downloads&_a=downloadfile&downloaditemid=119"
-      ;;
-    "GlobalSign Domain Validation CA - SHA256 - G2")
-      #クイック認証SSL用中間CA証明書(SHA256) https://jp.globalsign.com/repository/index.html
-      CaCertURL_PEM="https://jp.globalsign.com/repository/common/cer/gsdomainvalsha2g2.cer"
-      ;;
-  esac
-  if [[ "x$CaCertURL_PEM" != "x" ]]; then
-    echo_debug "make server.cacert.crt < $CaCertURL_PEM"
-    getCaCert "$CaCertURL_PEM" > server.cacert.crt
-    echo_debug "make server.cacert.crt.der"
-    openssl x509 -in server.cacert.crt -outform der -out server.cacert.crt.der
-  elif [[ "x$CaCertURL_DER" != "x" ]]; then
-    echo_debug "make server.cacert.crt.der < $CaCertURL_DER"
-    curl "$CaCertURL_DER" -o server.cacert.crt.der
-    echo_debug "make server.cacert.crt"
-    openssl x509 -inform der -in server.cacert.crt.der -out server.cacert.crt
-  else
-    echo "Unknown IssuerCN: $IssuerCN"
-  fi
+if [[ server.crt -nt server.inca.crt ]]; then
+  echo_debug "make server.inca.crt"
+  getInCACert server.crt > server.inca.crt
+  #echo_debug "make server.inca.crt.der"
+  #openssl x509 -in server.inca.crt -outform der -out server.inca.crt.der
 fi
 
 
@@ -191,10 +161,10 @@ if [[ server.key -nt server.key_and_crt.pem.plain || server.crt -nt server.key_a
 fi
 
 ##サーバ証明書と中間証明書をセットにしたものも作っておくと良い
-if [[ server.crt -nt server.crt_and_cacert.pem || server.cacert.crt -nt server.crt_and_cacert.pem ]]; then
-  echo_debug "make server.crt_and_cacert.pem"
-  cat server.crt        >  server.crt_and_cacert.pem
-  cat server.cacert.crt >> server.crt_and_cacert.pem
+if [[ server.crt -nt server.crt_and_inca.pem || server.inca.crt -nt server.crt_and_inca.pem ]]; then
+  echo_debug "make server.crt_and_inca.pem"
+  cat server.crt      >  server.crt_and_inca.pem
+  cat server.inca.crt >> server.crt_and_inca.pem
 fi
 
 
