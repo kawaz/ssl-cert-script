@@ -138,6 +138,11 @@ if [[ server.crt -nt server.crt_and_inca.pem || server.inca.crt -nt server.crt_a
   cat server.inca.crt >> server.crt_and_inca.pem
 fi
 
+## 互換性の為の一時的処置
+if [[ -f server.cacert.crt && server.inca.crt -nt server.cacert.crt ]]; then
+  echo_debug "make server.cacert.crt -> server.inca.crt (DEPRECATED)"
+  ln -sfn server.inca.crt server.cacert.crt
+fi
 
 ##パーミッション設定
 chmod 600 server.*
