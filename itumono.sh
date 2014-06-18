@@ -17,11 +17,11 @@ cd "$(dirname "$0")" || exit 1
 
 ##configファイルチェック
 if [[ ! -f config ]]; then
-  echo_debug "make config"
+  echo_debug "make ./config"
   cp config.sample config
 fi
 if diff -bB config config.sample >/dev/null 2>&1; then
-  echo_error "Please edit config."
+  echo_error "Please edit ./config."
   exit 1
 fi
 
@@ -208,7 +208,7 @@ x509_enddate=$(date -d "$(openssl x509 -in server.crt -noout -enddate | perl -pe
 x509_CN=$(openssl x509 -in server.crt -noout -subject | perl -pe's/.*CN=([a-z0-9\*\.\-]+).*/$1/')
 x509_SANs=($(openssl x509 -in server.crt -noout -text | grep -A1 "X509v3 Subject Alternative Name" | egrep -o 'DNS:[^,]+' | perl -pe's/.*://' | rev | sort | rev | uniq))
 x509_Subjects=($(echo $x509_CN "${x509_SANs[@]}" | perl -pe's/\s/\n/g' | rev | sort | rev | uniq))
-x509_issuer=$(openssl x509 -in server.crt -noout -issuer)
+x509_issuer=$(openssl x509 -in server.crt -noout -issuer | perl -pe's/^issuer= *//')
 echo "   Issuer: $x509_issuer"
 echo "StartDate: $x509_startdate"
 echo "  EndDate: $x509_enddate"
