@@ -145,7 +145,8 @@ if [[ -f server.cacert.crt && server.inca.crt -nt server.cacert.crt ]]; then
 fi
 
 ##パーミッション設定
-chmod 600 server.*
+chmod 644 server.*
+chmod 600 server.key.*
 
 ##証明書情報の表示
 echo_info "server.crt info is ..."
