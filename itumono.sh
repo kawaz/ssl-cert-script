@@ -45,32 +45,6 @@ function autopass() {
   fi
 }
 
-##URLかファイルか気にせずにcatする
-function cat2() {
-  if [[ $1 =~ ^https?:// ]]; then
-    curl -sL "$1"
-  elif [[ -f $1 ]]; then
-    cat "$1"
-  fi
-}
-
-##証明書のフォーマットを判定する
-function detectX509Format() {
-  (cat2 "$1" | openssl x509 -inform pem -noout 2>/dev/null && echo pem) ||
-  (cat2 "$1" | openssl x509 -inform der -noout 2>/dev/null && echo der) || return 1
-}
-
-##中間CA証明書を取得する
-function getInCACert() {
-  local inform=$(detectX509Format "$1")
-  [[ -z $inform ]] && return 1
-  local inca_uri=$(cat2 "$1" | openssl x509 -inform "$inform" -noout -text | egrep -A2 "^ +Authority Information Access:" | egrep '^ +CA Issuers - URI:' | perl -pe's/.*?URI://')
-  [[ -z $inca_uri ]] && return 0
-  cat2 "$1" | openssl x509 -inform "$inform"
-  getInCACert "$inca_uri"
-}
-
-
 ##パスフレーズを保存
 if [[ ! -f server.key.passphrase ]]; then
   if [[ -f server.key && -f server.key.plain ]] && diff server.key server.key.plain >/dev/null 2>&1; then
@@ -136,11 +110,8 @@ fi
 ##証明書に対応した中間CA証明書を取得する
 if [[ server.crt -nt server.inca.crt ]]; then
   echo_debug "make server.inca.crt"
-  getInCACert server.crt > server.inca.crt
-  #echo_debug "make server.inca.crt.der"
-  #openssl x509 -in server.inca.crt -outform der -out server.inca.crt.der
+  ./bin/collectInCACert.php server.crt > server.inca.crt
 fi
-
 
 ##アプリケーションによってはDER形式の証明書を要求するものもあるのでそれも作っておく
 if [[ server.crt -nt server.crt.der ]]; then
