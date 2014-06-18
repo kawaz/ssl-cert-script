@@ -140,7 +140,7 @@ fi
 
 ## 互換性の為の一時的処置
 if [[ -f server.cacert.crt && server.inca.crt -nt server.cacert.crt ]]; then
-  echo_debug "make server.cacert.crt -> server.inca.crt (DEPRECATED)"
+  echo_debug "make server.cacert.crt (DEPRECATED) -> server.inca.crt"
   ln -sfn server.inca.crt server.cacert.crt
 fi
 
