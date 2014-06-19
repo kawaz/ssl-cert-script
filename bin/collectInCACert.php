@@ -6,7 +6,7 @@ echo collectInCACert($file);
 function collectInCACert($file, $depth=0, $subjectKeyIdentifier_verifier=null) {
   list($cert, $pem) = read_cert($file);
   $inca = "";
-  $extensions = aget($cert, "extensions", []);
+  $extensions = aget($cert, "extensions");
   $basicConstraints_CA = aget(text2hash(aget($extensions, "basicConstraints"), '/, */'), "CA");
   $subjectKeyIdentifier = aget($extensions, "subjectKeyIdentifier");
   $authorityKeyIdentifier_keyid = aget(text2hash(aget($extensions, "authorityKeyIdentifier")), "keyid");
@@ -20,7 +20,8 @@ function collectInCACert($file, $depth=0, $subjectKeyIdentifier_verifier=null) {
   }
   //KeyIdentifierチェック(サブジェクトキーIDが子の言ってる親のキーIDと一致するかチェック)
   if(!empty($subjectKeyIdentifier_verifier) && $subjectKeyIdentifier != $subjectKeyIdentifier_verifier) {
-    return; //この中間CA証明書、間違いor偽物じゃね？？
+    fputs(STDERR, "[ERROR] CA証明書のサブジェクトキーIDが一致しません。配布サーバ側の問題か偽物を掴まされている可能性があります。errorfile=$file\n");
+    return false; //この中間CA証明書、間違いor偽物じゃね？？
   }
   //親CAが無いので探索終了。RootCAは中間CAではないのでPEM出力もしない。
   if(empty($authorityKeyIdentifier_keyid)) {
@@ -32,7 +33,14 @@ function collectInCACert($file, $depth=0, $subjectKeyIdentifier_verifier=null) {
   }
   //親CAを辿ってPEMを連結する
   if(preg_match('/^https?:/', $authorityInfoAccess_CAIssuersURI)) {
-    $inca .= collectInCACert($authorityInfoAccess_CAIssuersURI, $depth + 1, $authorityKeyIdentifier_keyid);
+    $authorityInCaCert = collectInCACert($authorityInfoAccess_CAIssuersURI, $depth + 1, $authorityKeyIdentifier_keyid);
+    if($authorityInCaCert === false) {
+      exit(1);
+    }
+    $inca .= $authorityInCaCert;
+  } else {
+    fputs(STDERR, "[ERROR] 証明書チェーンの途中に親CA証明書の配布URLが埋められていないものがあるため自動化出来ませんでした。認証局のドキュメントに従って手動で中間CAを集めてください。errorfile=$file\n");
+    return false;
   }
   return $inca;
 }
