@@ -15,12 +15,12 @@ function collectInCACert($file, $depth=0, $subjectKeyIdentifier_verifier=null) {
     echo "FILE: $file\n";
     echo "subjectKeyIdentifier: $subjectKeyIdentifier\n";
     echo "authorityKeyIdentifier: $authorityKeyIdentifier_keyid\n";
-    $cert["purposes"] = array_map(function($a){return intval($a[0])." ".intval($a[1])." ".$a[2];},array_values($cert["purposes"]));
+    $cert["purposes"] = array_map(function($a){return intval($a[0])." ".intval($a[1])." ".$a[2];},array_values($cert["purposes"])); //purposes情報って細かくて見難いので表示整理
     echo json_encode($cert, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n";
   }
-  //KeyIdentifierチェック(ついでにチェック)
+  //KeyIdentifierチェック(サブジェクトキーIDが子の言ってる親のキーIDと一致するかチェック)
   if(!empty($subjectKeyIdentifier_verifier) && $subjectKeyIdentifier != $subjectKeyIdentifier_verifier) {
-    return; //ありえないことが起こっている
+    return; //この中間CA証明書、間違いor偽物じゃね？？
   }
   //親CAが無いので探索終了。RootCAは中間CAではないのでPEM出力もしない。
   if(empty($authorityKeyIdentifier_keyid)) {
@@ -37,6 +37,7 @@ function collectInCACert($file, $depth=0, $subjectKeyIdentifier_verifier=null) {
   return $inca;
 }
 
+//配列操作でissetチェックとかする手間を省く関数
 function aget($arr, $key, $default=null) {
   if(!is_array($arr)) {
     return $default;
@@ -44,6 +45,7 @@ function aget($arr, $key, $default=null) {
   return isset($arr[$key]) ? $arr[$key] : $default;
 }
 
+//X509には "KEY:hoge, foo:bar" みたいな分解されつくしてない文字列フィールドが結構あるのでそれらをパースする関数
 function text2hash($text, $spliter='/[\r\n]+/') {
   $hash = array();
   if(is_string($text)) {
@@ -57,6 +59,7 @@ function text2hash($text, $spliter='/[\r\n]+/') {
   return $hash;
 }
 
+//DER形式でもPEM形式でも気にせず読み込んでX509情報を取得する
 function read_cert($file="php://stdin") {
   $pem = file_get_contents($file);
   $cert = openssl_x509_parse($pem);
@@ -67,6 +70,7 @@ function read_cert($file="php://stdin") {
   return array($cert, $pem);
 }
 
+//DER形式データをPEM形式に変換する
 function der2pem($der_data) {
   return "-----BEGIN CERTIFICATE-----\n" . chunk_split(base64_encode($der_data), 64, "\n") . "-----END CERTIFICATE-----\n";
 }
