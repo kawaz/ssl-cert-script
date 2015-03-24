@@ -75,7 +75,7 @@ if [[ ! -s server.key ]]; then
   ##パスフレーズ無しでよければ以下
   #openssl genrsa -out server.key 2048
   ##パスフレーズを設定するばあいは以下、passphrase:*****
-  autopass openssl genrsa -out server.key -aes256 4096
+  autopass openssl genrsa -out server.key -aes256 2048
 fi
 
 ##鍵ファイルの暗号化を解除する（これをしないと httpd start のときにパスを聞かれて止まってしまう）
