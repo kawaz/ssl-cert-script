@@ -87,14 +87,14 @@ fi
 ##ちゃんとした証明書を取る場合はcsrを作成してそれを使って証明証を申請した後、正式な証明書が来たらそれをserver.crtとして保存する
 if [[ server.key -nt server.csr ]]; then
   echo_debug "make server.csr"
-  autopass openssl req -sha1 -new -config config -key server.key -out server.csr
+  autopass openssl req -sha256 -new -config config -key server.key -out server.csr
 fi
 
 ##証明書作成
 if [[ server.key -nt server.crt ]]; then
   echo_debug "make server.crt"
   ##自署証明書の場合は以下のコマンドでcrtを作成してしまえばよい
-  autopass openssl req -sha1 -new -x509 -days $((10*365)) -config config -key server.key -out server.crt -set_serial `date +%s`
+  autopass openssl req -sha256 -new -x509 -days $((10*365)) -config config -key server.key -out server.crt -set_serial `date +%s`
   echo_info "自動生成されたserver.crtはオレオレ証明書なので、server.csrをCAへ送って正規の証明書を取得して下さい。"
   echo_info "証明書が取得できたらserver.crtを差し替えて使います。"
   echo_info "更にその時 $0 を再度実行すればserver.inca.crtも更新します。"
